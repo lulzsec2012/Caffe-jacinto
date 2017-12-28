@@ -852,6 +852,40 @@ void Blob::StoreSparseModeConnectivity(const SparseMode mode) {
 	}
 }
 
+//add by ingenic
+void Blob::StoreQuantMaskConnectivity(const SparseMode mode) {
+    CHECK(mode == SPARSE_INQ);
+    StoreSparseModeConnectivity(mode);
+	
+    const shared_ptr<SyncedMemory>& data_mem = data_tensor_->synced_mem();
+	if (!data_mem) {
+		return;
+	}
+		
+    shared_ptr<SyncedMemory>& connectivity_mem = connectivity_->mutable_synced_mem();
+
+	switch (data_mem->head()) {
+	case SyncedMemory::HEAD_AT_CPU:
+	{
+	  cpu_if_nonzero(count_, data_type(), data_mem->cpu_data(), connectivity_mem->mutable_cpu_data());
+	  break;
+	}
+	case SyncedMemory::HEAD_AT_GPU:
+	case SyncedMemory::SYNCED:
+	{
+#ifndef CPU_ONLY
+      gpu_if_nonzero(count_, data_type(), data_mem->cpu_data(), connectivity_mem->mutable_gpu_data());
+#else
+      NO_GPU;
+#endif
+      break;
+    }
+	default:
+	  LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
+	}
+}
+//~add by ingenic
+
 int Blob::cpu_count_zero(int count, Type dtype, const void* X, float threshold, const int start_index) const {
   if (is_type<float>(dtype)) {
     return caffe_cpu_count_zero(count, static_cast<const float*>(X)+start_index, (float)threshold);

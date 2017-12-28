@@ -167,6 +167,7 @@ class Solver {
   }
 
 public:
+  void INQ(); //add by ingenic
   void StoreSparseModeConnectivity();
   void ThresholdNet();
   float DisplaySparsity(bool verbose);

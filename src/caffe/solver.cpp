@@ -445,13 +445,24 @@ void Solver::ThresholdNet() {
       }
     }
 
-    net_->ApplySparseModeConnectivity();
+    net_->ApplySparseModeConnectivity(param_.sparse_mode());
   }
 }
 
+//add by ingenic
+void Solver::INQ() {
+  //induce incremental quantition
+  if (param_.sparse_mode() == SPARSE_INQ && Caffe::root_solver()) {
+    if(iter_ >= param_.sparsity_start_iter() && (iter_ % param_.sparsity_step_iter())==0) {
+      net_->StoreQuantMaskConnectivity(param_.sparse_mode());
+    }
+    net_->ApplySparseModeConnectivity(param_.sparse_mode());
+  }
+}
+//~add by ingenic
 
 void Solver::StoreSparseModeConnectivity() {
-  if (param_.sparse_mode() != caffe::SPARSE_NONE) {
+  if (param_.sparse_mode() == caffe::SPARSE_UPDATE) {
     net_->StoreSparseModeConnectivity(param_.sparse_mode());
   }
 }

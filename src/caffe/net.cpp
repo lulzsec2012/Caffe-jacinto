@@ -2135,20 +2135,39 @@ void Net::FindAndApplyChannelThresholdNet(float threshold_fraction_low, float th
  * And just use it here. But the current implementation of this cuntion is more generic
  * since it can be used when thresholding is completely outside.
  */
-void Net::ApplySparseModeConnectivity() {
+void Net::ApplySparseModeConnectivity(SparseMode mode) {
   for (int i = 0; i < layers_.size(); i++) {
     if (layers_[i]->type() == std::string("Convolution")) {
       LayerBase& conv_layer = *layers_[i];
       Blob& conv_weights = *conv_layer.blobs()[0];
 
-      //Use the connectivity information in the blob and zerout values accordingly.
-      conv_weights.ComputeSparseData();
-
-      //This is strictly not necessary
-      //conv_weights.ComputeSparseDiff();
+      if(mode == SPARSE_UPDATE){
+	//Use the connectivity information in the blob and zerout values accordingly.
+	conv_weights.ComputeSparseData();
+      }else if(mode == SPARSE_INQ){
+	//This is strictly not necessary
+	conv_weights.ComputeSparseDiff();
+      }
     }
   }
 }
+
+//add by ingenic
+void Net::StoreQuantMaskConnectivity(SparseMode mode) {
+  //LOG_IF(INFO, Caffe::root_solver()) << "All zero weights of convolution layers are frozen";
+  if(mode == SPARSE_INQ) {
+    for(int i=0; i<layers_.size(); i++) {
+      if(layers_[i]->type() == std::string("Convolution")) {
+        LayerBase& conv_layer = *layers_[i];
+        Blob& conv_weights = *conv_layer.blobs()[0];
+
+        //Store the non-zero weight information
+        conv_weights.StoreQuantMaskConnectivity(mode);
+      }
+    }
+  }
+}
+//~add by ingenic
 
 void Net::StoreSparseModeConnectivity(SparseMode mode) {
   LOG_IF(INFO, Caffe::root_solver()) << "All zero weights of convolution layers are frozen";

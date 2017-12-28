@@ -30,8 +30,8 @@ public:
   void QuantizeLayerInputs_cpu(Ftype* data, const int blob_id, const int count);
   void QuantizeLayerOutputs_gpu(Ftype* data, const int count);
   void QuantizeLayerInputs_gpu(Ftype* data, const int blob_id, const int count);
-  void QuantizeWeights_cpu(Ftype* data, const int count, bool clip);
-  void QuantizeWeights_gpu(Ftype* data, const int count, bool clip);
+  void QuantizeWeights_cpu(Ftype* data, Ftype* connectivity, const int count, bool clip);
+  void QuantizeWeights_gpu(Ftype* data, Ftype* connectivity, const int count, bool clip);
 
   /**
    * @brief Trim data to fixed point.

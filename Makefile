@@ -45,6 +45,7 @@ COMMON_FLAGS += -DCAFFE_VERSION=$(DYNAMIC_VERSION_MAJOR).$(DYNAMIC_VERSION_MINOR
 # NVCaffe requires C++ 11
 COMMON_FLAGS += -std=c++11
 COMMON_FLAGS += -DCUDA_NO_HALF
+COMMON_FLAGS += -DSQLITE_ENABLE_COLUMN_METADATA
 
 ##############################
 # Get all source files
@@ -211,7 +212,7 @@ ifeq ($(USE_LMDB), 1)
 	LIBRARIES += lmdb
 endif
 ifeq ($(USE_OPENCV), 1)
-	LIBRARIES += opencv_core opencv_highgui opencv_imgproc 
+	LIBRARIES += opencv_core opencv_highgui opencv_imgproc opencv_imgcodecs  opencv_video opencv_videoio gdal
 
 	ifeq ($(OPENCV_VERSION), 3)
 		LIBRARIES += opencv_imgcodecs

@@ -334,6 +334,7 @@ message NetParameter {
 enum SparseMode {
   SPARSE_NONE = 0;               //keep connected
   SPARSE_UPDATE = 1;             //disconnect all zero-weight connections during back propagation udpate
+  SPARSE_INQ = 2;                //close zero-weight and quantied weight updating during back propagation
 } 
 
 // NOTE

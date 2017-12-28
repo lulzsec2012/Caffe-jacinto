@@ -21,7 +21,7 @@ void QuantizedLayer<Ftype, Btype>::Quantize_gpu(const vector<Blob*>& bottom,
 
       // Trim weights - do it only at the start of quantization
       if(param.qparam_w().quantize() && blobs.size() > 0 && param.quantized_infer_count() == 0) {
-        this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
+        this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);
         //if (blobs.size() > 1) { //(this->bias_term_) {
         //  this->QuantizeWeights_gpu(blobs[1]->mutable_gpu_data<Ftype>(), blobs[1]->count(), false);
         //}
@@ -39,7 +39,7 @@ void QuantizedLayer<Ftype, Btype>::Quantize_gpu(const vector<Blob*>& bottom,
 
 
 template<typename Ftype, typename Btype>
-void QuantizedLayer<Ftype, Btype>::QuantizeWeights_gpu(Ftype* data, const int count, bool clip) {
+void QuantizedLayer<Ftype, Btype>::QuantizeWeights_gpu(Ftype* data, Ftype* connectivity, const int count, bool clip) {
   const QuantizationParameter& param = this->layer_param_.quantization_param();
   const QuantizationParameter::QParams& qparam_w = param.qparam_w();
   switch (param.precision()) {

@@ -348,6 +348,20 @@ class Blob {
     return static_cast<Dtype*>(diff_tensor_->mutable_synced_mem()->mutable_cpu_data());
   }
 
+  //add by ingenic
+  template<typename Dtype>
+  const Dtype* cpu_connectivity() const { //connectivity_
+    connectivity_->convert(tp<Dtype>());
+    return static_cast<const Dtype*>(connectivity_->synced_mem()->cpu_data());
+  }
+
+  template<typename Dtype>
+  Dtype* mutable_cpu_connectivity() {
+    connectivity_->convert(tp<Dtype>());
+    return static_cast<Dtype*>(connectivity_->mutable_synced_mem()->mutable_cpu_data());
+  }
+  //~add by ingenic
+
   // Element-wise accessor. Might be slow due to syncing from GPU to CPU.
   // Currently it's used in tests only. We better keep it this way.
   float data_at(const int n, const int c, const int h, const int w) const {
@@ -523,6 +537,19 @@ class Blob {
     convert_diff(tp<Dtype>());
     return static_cast<Dtype*>(diff_tensor_->mutable_synced_mem()->mutable_gpu_data());
   }
+  //add by ingenic
+  template<typename Dtype>
+  const Dtype* gpu_connectivity() const {
+    connectivity_->convert(tp<Dtype>());
+    return static_cast<const Dtype*>(connectivity_->synced_mem()->gpu_data());
+  }
+
+  template<typename Dtype>
+  Dtype* mutable_gpu_connectivity() {
+    connectivity_->convert(tp<Dtype>());
+    return static_cast<Dtype*>(connectivity_->mutable_synced_mem()->mutable_gpu_data());
+  }
+  //~add by ingenic
 
   void async_gpu_push() {
     data_tensor_->mutable_synced_mem()->async_gpu_push();
@@ -574,6 +601,7 @@ class Blob {
   void ComputeSparseDiff();
   void ComputeSparseData();
   void StoreSparseModeConnectivity(const SparseMode mode);
+  void StoreQuantMaskConnectivity(const SparseMode mode);//add by ingenic
   
   void cpu_zerout(int count, Type dtype, const void* X, void* Y, float threshold, const int start_index);
 #ifndef CPU_ONLY
@@ -705,7 +733,19 @@ class TBlob : public Blob {
     check_integrity(false, diff_type(), tp<T>());
     return Blob::mutable_cpu_diff<T>();
   }
+  //add by ingenic
+  template<typename T = Dtype>
+  const T* cpu_connectivity() const {
+    check_integrity(false, connectivity_->type(), tp<T>());
+    return Blob::cpu_connectivity<T>();
+  }
 
+  template<typename T = Dtype>
+  T* mutable_cpu_connectivity() {
+    check_integrity(true, connectivity_->type(), tp<T>());
+    return Blob::mutable_cpu_connectivity<T>();
+  }
+  //~add by ingenic
 #ifndef CPU_ONLY
   template<typename T = Dtype>
   const T* gpu_data() const {
@@ -730,6 +770,19 @@ class TBlob : public Blob {
     check_integrity(false, diff_type(), tp<T>());
     return Blob::mutable_gpu_diff<T>();
   }
+  //add by ingenic
+  template<typename T = Dtype>
+  const T* gpu_connectivity() const {
+    check_integrity(false, connectivity_->type(), tp<T>());
+    return Blob::gpu_connectivity<T>();
+  }
+
+  template<typename T = Dtype>
+  T* mutable_gpu_connectivity() {
+    check_integrity(true, connectivity_->type(), tp<T>());
+    return Blob::mutable_gpu_connectivity<T>();
+  }
+  //~add by ingenic
 #endif
 
   DISABLE_COPY_MOVE_AND_ASSIGN(TBlob);

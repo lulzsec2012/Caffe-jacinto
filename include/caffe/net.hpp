@@ -312,8 +312,9 @@ class Net {
       float threshold_value_maxratio, float threshold_value, float threshold_step_factor, bool verbose = true);
   void FindAndApplyChannelThresholdNet(float threshold_fraction_low, float threshold_fraction_mid, float threshold_fraction_high,
       float threshold_value_maxratio, float threshold_value, float threshold_step_factor, bool verbose = true);
-  void ApplySparseModeConnectivity();  
+  void ApplySparseModeConnectivity(SparseMode mode);  
   void StoreSparseModeConnectivity(SparseMode mode);
+  void StoreQuantMaskConnectivity(SparseMode mode);//add by ingenic
   float DisplaySparsity(bool verbose);
   float DisplayConnectivitySparsity(bool verbose);
   
