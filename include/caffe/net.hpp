@@ -314,7 +314,7 @@ class Net {
       float threshold_value_maxratio, float threshold_value, float threshold_step_factor, bool verbose = true);
   void ApplySparseModeConnectivity(SparseMode mode);  
   void StoreSparseModeConnectivity(SparseMode mode);
-  void StoreQuantMaskConnectivity(SparseMode mode);//add by ingenic
+  void StoreQuantMaskConnectivity(SparseMode mode, int round, float *partation);//add by ingenic
   float DisplaySparsity(bool verbose);
   float DisplayConnectivitySparsity(bool verbose);
   

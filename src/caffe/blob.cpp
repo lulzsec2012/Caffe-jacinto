@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "caffe/blob.hpp"
+#include <stdlib.h>
 
 namespace caffe {
 
@@ -853,36 +854,39 @@ void Blob::StoreSparseModeConnectivity(const SparseMode mode) {
 }
 
 //add by ingenic
-void Blob::StoreQuantMaskConnectivity(const SparseMode mode) {
-    CHECK(mode == SPARSE_INQ);
-    StoreSparseModeConnectivity(mode);
-	
-    const shared_ptr<SyncedMemory>& data_mem = data_tensor_->synced_mem();
-	if (!data_mem) {
-		return;
-	}
-		
-    shared_ptr<SyncedMemory>& connectivity_mem = connectivity_->mutable_synced_mem();
-
-	switch (data_mem->head()) {
-	case SyncedMemory::HEAD_AT_CPU:
-	{
-	  cpu_if_nonzero(count_, data_type(), data_mem->cpu_data(), connectivity_mem->mutable_cpu_data());
-	  break;
-	}
-	case SyncedMemory::HEAD_AT_GPU:
-	case SyncedMemory::SYNCED:
-	{
-#ifndef CPU_ONLY
-      gpu_if_nonzero(count_, data_type(), data_mem->cpu_data(), connectivity_mem->mutable_gpu_data());
-#else
-      NO_GPU;
-#endif
-      break;
+void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *partation) {
+  StoreSparseModeConnectivity(mode);
+  
+  const shared_ptr<SyncedMemory>& data_mem = data_tensor_->synced_mem();
+  if (!data_mem) {
+    return;
+  }
+  
+  shared_ptr<SyncedMemory>& connectivity_mem = connectivity_->mutable_synced_mem();
+  int* pmask = (int*)malloc(sizeof(int)*count_);
+  memset(pmask,1,count_);
+  
+  int perCount=0;
+  for(int i=0;i<round;i++){
+    srand(i);
+    while(true){
+      int index=rand()%count_;
+      if(pmask[index]==1){
+	pmask[index]=0;
+	perCount++;
+      }
+      if(perCount/count_>=partation[i] || perCount>=count_){
+	break;
+      }
     }
-	default:
-	  LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
-	}
+  }
+  //caffe_cpu_eltwise_multi(count_, static_cast<const int*>(pmask), static_cast<float*>(connectivity_mem->mutable_cpu_data()));
+  float * pconnect = static_cast<float*>(connectivity_mem->mutable_cpu_data());
+  for(int i=0;i<count_;i++){
+    pconnect[i]*=pmask[i];
+  }
+  
+  
 }
 //~add by ingenic
 

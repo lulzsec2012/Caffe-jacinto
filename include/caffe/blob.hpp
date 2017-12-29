@@ -601,7 +601,7 @@ class Blob {
   void ComputeSparseDiff();
   void ComputeSparseData();
   void StoreSparseModeConnectivity(const SparseMode mode);
-  void StoreQuantMaskConnectivity(const SparseMode mode);//add by ingenic
+  void StoreQuantMaskConnectivity(const SparseMode mode, int round, float *partation);//add by ingenic
   
   void cpu_zerout(int count, Type dtype, const void* X, void* Y, float threshold, const int start_index);
 #ifndef CPU_ONLY

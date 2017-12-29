@@ -2153,7 +2153,7 @@ void Net::ApplySparseModeConnectivity(SparseMode mode) {
 }
 
 //add by ingenic
-void Net::StoreQuantMaskConnectivity(SparseMode mode) {
+  void Net::StoreQuantMaskConnectivity(SparseMode mode, int round, float *partation) {
   //LOG_IF(INFO, Caffe::root_solver()) << "All zero weights of convolution layers are frozen";
   if(mode == SPARSE_INQ) {
     for(int i=0; i<layers_.size(); i++) {
@@ -2162,7 +2162,7 @@ void Net::StoreQuantMaskConnectivity(SparseMode mode) {
         Blob& conv_weights = *conv_layer.blobs()[0];
 
         //Store the non-zero weight information
-        conv_weights.StoreQuantMaskConnectivity(mode);
+        conv_weights.StoreQuantMaskConnectivity(mode,round,partation);
       }
     }
   }
