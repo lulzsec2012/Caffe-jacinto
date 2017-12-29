@@ -123,7 +123,6 @@ __global__ void Trim2FixedPoint_kernel(Dtype* data, const int cnt,
   }
 }
 
-
 template<typename Ftype, typename Btype>
 void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_gpu(Ftype* data, const int cnt, bool power2_range,
       const int bitwidth, const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip) {

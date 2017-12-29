@@ -133,7 +133,7 @@ void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_cpu(Ftype* data, const int cn
 }
 
 //add by ingenic
-/*
+
 template <typename Ftype>
 double weightCluster_zero( Ftype weight, int M)
 {
@@ -169,13 +169,12 @@ template double weightCluster_zero<unsigned int>(unsigned int weight,int M);
 template double weightCluster_zero<int>(int weight,int M);
   
 template<typename Ftype, typename Btype>
-void QuantizedLayer<Ftype, Btype>::Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, bool power2_range, const int bitwidth,
-    const int rounding, float min, float max, bool clip) {
+void QuantizedLayer<Ftype, Btype>::Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, float min, float max, bool clip) {
   float max_val_abs = std::max(std::fabs(max), std::fabs(min));
   
   //caculate the n1
   int n1=(int)floor(log2(max*4.0/3.0));
-  for (int i = 0; i < (count_); ++i) {
+  for (int i = 0; i < (cnt); ++i) {
     // Saturate data
     if(clip) {
       data[i] = std::max(std::min(data[i], max), min);
@@ -185,7 +184,7 @@ void QuantizedLayer<Ftype, Btype>::Trim2INQ_cpu(Ftype* data, Ftype* connectivity
     }
   }
 }
-*/
+
 //~add by ingenic
 
 template<typename Ftype, typename Btype>

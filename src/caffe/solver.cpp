@@ -456,7 +456,11 @@ void Solver::INQ() {
   //induce incremental quantition
   if (param_.sparse_mode() == SPARSE_INQ && Caffe::root_solver()) {
     if(iter_ >= param_.sparsity_start_iter() && (iter_ % param_.sparsity_step_iter())==0) {
-      float partation[]={0.3, 0.6, 0.8 , 0.9, 1.0};
+      float partation[]={0, 0.3, 0.6, 0.8 , 0.9, 1.0};
+      LOG(INFO) << " param_.sparse_mode=" << param_.sparse_mode()
+		<< " round=" << (iter_ / param_.sparsity_step_iter())
+		<< " partation[i]=" << partation[(iter_ / param_.sparsity_step_iter())]
+		<< " iter=" << iter_;
       net_->StoreQuantMaskConnectivity(param_.sparse_mode(), iter_ / param_.sparsity_step_iter(), partation);
     }
     net_->ApplySparseModeConnectivity(param_.sparse_mode());

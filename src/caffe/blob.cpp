@@ -865,7 +865,6 @@ void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *p
   shared_ptr<SyncedMemory>& connectivity_mem = connectivity_->mutable_synced_mem();
   int* pmask = (int*)malloc(sizeof(int)*count_);
   memset(pmask,1,count_);
-  
   int perCount=0;
   for(int i=0;i<round;i++){
     srand(i);
@@ -885,7 +884,7 @@ void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *p
   for(int i=0;i<count_;i++){
     pconnect[i]*=pmask[i];
   }
-  
+  free(pmask);
   
 }
 //~add by ingenic
