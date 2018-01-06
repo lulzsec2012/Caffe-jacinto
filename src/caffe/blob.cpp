@@ -862,19 +862,38 @@ void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *p
     return;
   }
   
-  shared_ptr<SyncedMemory>& connectivity_mem = connectivity_->mutable_synced_mem();
+  shared_ptr<SyncedMemory>& connectivity_mem = connectivity_->mutable_synced_mem();  
   int* pmask = (int*)malloc(sizeof(int)*count_);
-  memset(pmask,1,count_);
+  int* pidx  = (int*)malloc(sizeof(int)*count_);
+  for(int i=0;i<count_;i++){
+    pmask[i] = 1;
+    pidx[i] = i;
+  }
+  std::cout<<"hello ingenic!"<<std::endl;
+  std::cout<<"round="<<round<<std::endl;
+  std::cout<<"count_="<<count_<<std::endl;
   int perCount=0;
   for(int i=0;i<round;i++){
     srand(i);
     while(true){
-      int index=rand()%count_;
-      if(pmask[index]==1){
-	pmask[index]=0;
+      int index=rand()%(count_ - perCount);
+      if(pmask[pidx[index]]==1){
+	pmask[pidx[index]]=0;
+	pidx[index]=pidx[count_ - 1 - perCount];
 	perCount++;
       }
-      if(perCount/count_>=partation[i] || perCount>=count_){
+      if(perCount/(count_+0.0)>=partation[i] || perCount>=count_){
+	int sumPmask = 0;
+	int sumPidx  = 0;
+	for(int j=0;j<count_;j++){
+	  sumPmask += pmask[j];
+	}
+	for(int j=0;j<(count_ - perCount);j++){
+	  sumPidx  += pmask[pidx[j]];
+	}
+	std::cout<<"sumPmask/(count_+0.0)="<<sumPmask/(count_+0.0)<<std::endl;
+	std::cout<<"sumPidx/(count_+0.0)="<<sumPidx/(count_+0.0)<<std::endl;
+	std::cout<<"partation[i]="<<partation[i]<<std::endl;
 	break;
       }
     }
@@ -882,10 +901,9 @@ void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *p
   //caffe_cpu_eltwise_multi(count_, static_cast<const int*>(pmask), static_cast<float*>(connectivity_mem->mutable_cpu_data()));
   float * pconnect = static_cast<float*>(connectivity_mem->mutable_cpu_data());
   for(int i=0;i<count_;i++){
-    pconnect[i]*=pmask[i];
+    pconnect[i] *= pmask[i];
   }
   free(pmask);
-  
 }
 //~add by ingenic
 

@@ -135,38 +135,47 @@ void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_cpu(Ftype* data, const int cn
 //add by ingenic
 
 template <typename Ftype>
-double weightCluster_zero( Ftype weight, int M)
+double weightCluster_zero( Ftype weight, int M, Ftype connect, bool clip)
 {
+  // Saturate data
+  if(clip) {
+    weight = std::max(std::min((double)weight, pow(2,M)), -pow(2,M));
+  }
   double min=100;
   double ind=0;
   double flag=1.0;
-  if(min>std::abs(weight))
-    {
-      min=std::abs(weight);
-      flag=0.0;
-    }
-  
-  for(int i=(M-6);i<=M;i++)
-    {
-      if(min>std::abs(weight-pow(2,i)))
-	{
-	  min=std::abs(weight-pow(2,i));
-	  ind=i;
-	  flag=1.0;
-	}
-      if(min>std::abs(weight+pow(2,i)))
-	{
-	  min=std::abs(weight+pow(2,i));
-	  ind=i;
-	  flag=-1.0;
-	}
-    }
-  return flag*pow(2,ind);
+  if(connect==0){
+    if(min>std::abs(weight))
+      {
+	min=std::abs(weight);
+	flag=0.0;
+      }
+    
+    for(int i=(M-6);i<=M;i++)
+      {
+	if(min>std::abs(weight-pow(2,i)))
+	  {
+	    min=std::abs(weight-pow(2,i));
+	    ind=i;
+	    flag=1.0;
+	  }
+	if(min>std::abs(weight+pow(2,i)))
+	  {
+	    min=std::abs(weight+pow(2,i));
+	    ind=i;
+	    flag=-1.0;
+	  }
+      }
+    return flag*pow(2,ind);
+  }else{
+    return weight;
+  }
+
 }
-template double weightCluster_zero<float>(float weight,int M);
-template double weightCluster_zero<double>(double weight,int M);
-template double weightCluster_zero<unsigned int>(unsigned int weight,int M);
-template double weightCluster_zero<int>(int weight,int M);
+template double weightCluster_zero<float>(float weight, int M, float connect, bool clip);
+template double weightCluster_zero<double>(double weight, int M, double connect, bool clip);
+template double weightCluster_zero<unsigned int>(unsigned int weight, int M, unsigned int connect, bool clip);
+template double weightCluster_zero<int>(int weight, int M, int connect, bool clip);
   
 template<typename Ftype, typename Btype>
 void QuantizedLayer<Ftype, Btype>::Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, float min, float max, bool clip) {
@@ -175,13 +184,7 @@ void QuantizedLayer<Ftype, Btype>::Trim2INQ_cpu(Ftype* data, Ftype* connectivity
   //caculate the n1
   int n1=(int)floor(log2(max*4.0/3.0));
   for (int i = 0; i < (cnt); ++i) {
-    // Saturate data
-    if(clip) {
-      data[i] = std::max(std::min(data[i], max), min);
-    }
-    if(connectivity[i]==0){
-      data[i] = weightCluster_zero(data[i],n1);
-    }
+    data[i] = weightCluster_zero(data[i],n1,connectivity[i],clip);
   }
 }
 

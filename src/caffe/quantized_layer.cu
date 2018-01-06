@@ -136,6 +136,62 @@ void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_gpu(Ftype* data, const int cn
       data, cnt, bitwidth, rounding, scale, inv_scale, offset, min_data, max_data, clip);
 }
 
+//add by ingenic
+template <typename Dtype>
+__global__ void weightCluster_zero_kernel(Dtype* data, const int M,
+    Dtype* connectivity, bool clip, const int cnt) {
+    CUDA_KERNEL_LOOP(index, cnt) {
+
+      Dtype weight;
+      // Saturate data
+      if(clip) {
+        weight = std::max(std::min(data[index], pow(2,M)), -pow(2,M));
+      }else{
+        weight = data[index];
+      }     
+      double min=100;
+      double ind=0;
+      double flag=1.0;
+      if(connectivity[index]==0){
+        if(min>std::abs(weight))
+          {
+	    min=std::abs(weight);
+	    flag=0.0;
+          }
+    
+        for(int i=(M-6);i<=M;i++)
+          {
+       	    if(min>std::abs(weight-pow(2,i)))
+	      {
+	        min=std::abs(weight-pow(2,i));
+	        ind=i;
+	        flag=1.0;
+	      }
+	    if(min>std::abs(weight+pow(2,i)))
+	      {
+	        min=std::abs(weight+pow(2,i));
+	        ind=i;
+	        flag=-1.0;
+	      }
+          }
+        data[index] = flag*pow(2,ind);
+      }else{
+        data[index] = weight;
+      } 
+    }
+  }
+  
+template<typename Ftype, typename Btype>
+void QuantizedLayer<Ftype, Btype>::Trim2INQ_gpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, float min, float max, bool clip) {
+  float max_val_abs = std::max(std::fabs(max), std::fabs(min));
+  
+  //caculate the n1
+  int n1=(int)floor(log2(max*4.0/3.0));
+  Trim2FixedPoint_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(data,n1,connectivity,clip,cnt);
+}
+
+//~add by ingenic
+
 template void QuantizedLayer<double, double>::Quantize_gpu(const vector<Blob*>& bottom,const vector<Blob*>& top);
 template void QuantizedLayer<double, float>::Quantize_gpu(const vector<Blob*>& bottom,const vector<Blob*>& top);
 template void QuantizedLayer<double, float16>::Quantize_gpu(const vector<Blob*>& bottom,const vector<Blob*>& top);

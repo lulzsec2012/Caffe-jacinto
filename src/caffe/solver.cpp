@@ -461,7 +461,9 @@ void Solver::INQ() {
 		<< " round=" << (iter_ / param_.sparsity_step_iter())
 		<< " partation[i]=" << partation[(iter_ / param_.sparsity_step_iter())]
 		<< " iter=" << iter_;
-      net_->StoreQuantMaskConnectivity(param_.sparse_mode(), iter_ / param_.sparsity_step_iter(), partation);
+      int round = iter_ / param_.sparsity_step_iter();
+      round = std::min(6,round);
+      net_->StoreQuantMaskConnectivity(param_.sparse_mode(), round, partation);
     }
     net_->ApplySparseModeConnectivity(param_.sparse_mode());
   }
