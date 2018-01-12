@@ -900,6 +900,15 @@ void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *p
   }
   //caffe_cpu_eltwise_multi(count_, static_cast<const int*>(pmask), static_cast<float*>(connectivity_mem->mutable_cpu_data()));
   float * pconnect = static_cast<float*>(connectivity_mem->mutable_cpu_data());
+  float * data = static_cast<float*>(data_mem->mutable_cpu_data());
+  int sparsityCount = 0;
+  for(int i=0;i<count_;i++){
+    if(data[i]<0.000001 && data[i]>-0.000001){
+      pconnect[i] = 0;
+      sparsityCount++;
+    }
+  }
+  std::cout<<"sparsityCount="<<sparsityCount<<std::endl;
   for(int i=0;i<count_;i++){
     pconnect[i] *= pmask[i];
   }

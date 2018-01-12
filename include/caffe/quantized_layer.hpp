@@ -32,6 +32,7 @@ public:
   void QuantizeLayerInputs_gpu(Ftype* data, const int blob_id, const int count);
   void QuantizeWeights_cpu(Ftype* data, Ftype* connectivity, const int count, bool clip);
   void QuantizeWeights_gpu(Ftype* data, Ftype* connectivity, const int count, bool clip);
+  void QuantizeWeights_gpu(Ftype* data, const int count, bool clip);
 
   /**
    * @brief Trim data to fixed point.
@@ -43,8 +44,8 @@ public:
       const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip);
 
   //add by ingenic
-  void Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, float min, float max, bool clip);
-  void Trim2INQ_gpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, float min, float max, bool clip);
+  void Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, const float min, const float max, bool clip);
+  void Trim2INQ_gpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, const float min, const float max, bool clip);
   //~add by ingenic
   /**
    * @brief Generate random number in [0,1) range.
