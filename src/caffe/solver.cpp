@@ -302,7 +302,6 @@ void Solver::Step(int iters) {
       break;
     }
 
-
     // average the loss across iterations for smoothed reporting
     UpdateSmoothedLoss(loss, start_iter, average_loss);
     if (this->param_display() && (display || rel_iter <= 2 || iter_ + 1 >= stop_iter)) {

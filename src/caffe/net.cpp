@@ -2160,7 +2160,7 @@ void Net::ApplySparseModeConnectivity(SparseMode mode) {
       if(layers_[i]->type() == std::string("Convolution")) {
         LayerBase& conv_layer = *layers_[i];
         Blob& conv_weights = *conv_layer.blobs()[0];
-
+        LOG(INFO) << "StoreQuantMaskConnectivity:conv_layer->name():" << conv_layer.name()<<" id="<<i;
         //Store the non-zero weight information
         conv_weights.StoreQuantMaskConnectivity(mode,round,partation);
       }

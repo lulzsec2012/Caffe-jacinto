@@ -45,13 +45,14 @@ class Blob {
     std::swap(count_, other.count_);
     std::swap(last_data_type_, other.last_data_type_);
     std::swap(last_diff_type_, other.last_diff_type_);
+    std::swap(last_connectivity_type_, other.last_connectivity_type_);
   }
 
  protected:
   Blob(Type data_type, Type diff_type)
       : data_tensor_(make_shared<Tensor>(data_type)),
         diff_tensor_(make_shared<Tensor>(diff_type)),
-        count_(0), last_data_type_(data_type), last_diff_type_(diff_type) {}
+        count_(0), last_data_type_(data_type), last_diff_type_(diff_type),last_connectivity_type_(data_type) {}
   explicit Blob(Type dtype)
       : Blob(dtype, dtype) {}
 
@@ -94,6 +95,11 @@ class Blob {
   Type diff_type() const {
     return diff_tensor_ ? diff_tensor_->type() : last_diff_type_;
   }
+  //add by ingenic
+  Type connectivity_type() const {
+    return connectivity_ ? connectivity_->type() : last_connectivity_type_;
+  }
+  //~add by ingenic
 
   bool diff_equals(const Blob& other) const {
     return diff_tensor_ == other.diff_tensor_;
@@ -351,13 +357,13 @@ class Blob {
   //add by ingenic
   template<typename Dtype>
   const Dtype* cpu_connectivity() const { //connectivity_
-    connectivity_->convert(tp<Dtype>());
+    convert_connectivity(tp<Dtype>());
     return static_cast<const Dtype*>(connectivity_->synced_mem()->cpu_data());
   }
 
   template<typename Dtype>
   Dtype* mutable_cpu_connectivity() {
-    connectivity_->convert(tp<Dtype>());
+    convert_connectivity(tp<Dtype>());
     return static_cast<Dtype*>(connectivity_->mutable_synced_mem()->mutable_cpu_data());
   }
   //~add by ingenic
@@ -540,13 +546,15 @@ class Blob {
   //add by ingenic
   template<typename Dtype>
   const Dtype* gpu_connectivity() const {
-    connectivity_->convert(tp<Dtype>());
+    convert_connectivity(tp<Dtype>());
     return static_cast<const Dtype*>(connectivity_->synced_mem()->gpu_data());
   }
 
   template<typename Dtype>
   Dtype* mutable_gpu_connectivity() {
-    connectivity_->convert(tp<Dtype>());
+    LOG(INFO) << "hello here!: mutable_gpu_connectivityA";
+    convert_connectivity(tp<Dtype>());
+    LOG(INFO) << "hello here!: mutable_gpu_connectivityB";
     return static_cast<Dtype*>(connectivity_->mutable_synced_mem()->mutable_gpu_data());
   }
   //~add by ingenic
@@ -609,7 +617,8 @@ class Blob {
 #endif
   void zerout(float threshold, const int start_index, const int count);
 
- protected:
+  //protected:
+ public:
   mutable shared_ptr<Tensor> data_tensor_;
   mutable shared_ptr<Tensor> diff_tensor_;
     
@@ -617,7 +626,7 @@ class Blob {
   vector<int> shape_;
   int count_;
   Type last_data_type_, last_diff_type_; // in case of move
-
+  Type last_connectivity_type_; //add by ingenic
   //For sparse operation  
   mutable shared_ptr<Tensor> connectivity_;
   
@@ -636,6 +645,15 @@ class Blob {
   void convert_diff(Type new_diff_type) const {
     diff_tensor_->convert(new_diff_type);
   }
+  //add by ingenic
+  bool is_current_connectivity_valid() const {
+    LOG(INFO) << "hello here!connectivity_: " << connectivity_;
+    return connectivity_->is_current_valid();
+  }
+  void convert_connectivity(Type new_data_type) const {
+    connectivity_->convert(new_data_type);
+  }
+  //~add by ingenic
 
   static float at(int offset, Type dtype, const void* data);
   static float cpu_sumsq(int count, Type dtype, const void* data);
@@ -736,13 +754,13 @@ class TBlob : public Blob {
   //add by ingenic
   template<typename T = Dtype>
   const T* cpu_connectivity() const {
-    check_integrity(false, connectivity_->type(), tp<T>());
+    check_integrity(true, connectivity_type(), tp<T>());
     return Blob::cpu_connectivity<T>();
   }
 
   template<typename T = Dtype>
   T* mutable_cpu_connectivity() {
-    check_integrity(true, connectivity_->type(), tp<T>());
+    check_integrity(true, connectivity_type(), tp<T>());
     return Blob::mutable_cpu_connectivity<T>();
   }
   //~add by ingenic
@@ -773,13 +791,15 @@ class TBlob : public Blob {
   //add by ingenic
   template<typename T = Dtype>
   const T* gpu_connectivity() const {
-    check_integrity(false, connectivity_->type(), tp<T>());
+    check_integrity(true, connectivity_type(), tp<T>());
     return Blob::gpu_connectivity<T>();
   }
 
   template<typename T = Dtype>
   T* mutable_gpu_connectivity() {
-    check_integrity(true, connectivity_->type(), tp<T>());
+    LOG(INFO) << "hello here!: mutable_gpu_connectivity";
+    check_integrity(true, connectivity_type(), tp<T>());
+    LOG(INFO) << "hello here!: mutable_gpu_connectivity";
     return Blob::mutable_gpu_connectivity<T>();
   }
   //~add by ingenic
