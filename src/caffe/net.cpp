@@ -1678,7 +1678,7 @@ void Net::UpdateQuantizationRangeInLayers() {
     min_in_[layer_id].resize(bottom_vecs_[layer_id].size(), 0);
     max_in_[layer_id].resize(bottom_vecs_[layer_id].size(), 0);
   }
-
+  if(infer_count_>1000)return;
   // Find maximal values.
   float expansion_factor = (infer_count_ <= net_qparam.quantization_start()? 2.0 : (net_qparam.power2_range()? 1.0 : 1.2));
   float alpha = (infer_count_ <= net_qparam.quantization_start()? 0.0 : 0.90);
@@ -2160,9 +2160,19 @@ void Net::ApplySparseModeConnectivity(SparseMode mode) {
       if(layers_[i]->type() == std::string("Convolution")) {
         LayerBase& conv_layer = *layers_[i];
         Blob& conv_weights = *conv_layer.blobs()[0];
-        LOG(INFO) << "StoreQuantMaskConnectivity:conv_layer->name():" << conv_layer.name()<<" id="<<i;
+	//
+	float max_val_abs = 6;
+	if(layers_[i]->blobs().size() > 0) {
+	  float min_layer = min_weights_[i];
+	  float max_layer = max_weights_[i];
+	  max_val_abs = std::max(std::fabs(max_layer), std::fabs(min_layer));
+	  //float max_val_range = std::abs(max_layer - min_layer);
+	  //bool unsigned_data = (min_layer>=0);
+	}else{
+	  LOG(FATAL) << "max_val_range is wrong!";
+	}
         //Store the non-zero weight information
-        conv_weights.StoreQuantMaskConnectivity(mode,round,partation);
+        conv_weights.StoreQuantMaskConnectivity(mode,round,partation,max_val_abs);
       }
     }
   }

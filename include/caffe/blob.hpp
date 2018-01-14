@@ -58,7 +58,6 @@ class Blob {
 
  public:
   virtual ~Blob() {}
-
   /// @brief Deprecated; use <code>Reshape(const vector<int>& shape)</code>.
   void Reshape(const int num, const int channels, const int height, const int width);
   void Reshape(const int num);
@@ -609,7 +608,7 @@ class Blob {
   void ComputeSparseDiff();
   void ComputeSparseData();
   void StoreSparseModeConnectivity(const SparseMode mode);
-  void StoreQuantMaskConnectivity(const SparseMode mode, int round, float *partation);//add by ingenic
+  void StoreQuantMaskConnectivity(const SparseMode mode, int round, float *partation, float max_val_abs);//add by ingenic
   
   void cpu_zerout(int count, Type dtype, const void* X, void* Y, float threshold, const int start_index);
 #ifndef CPU_ONLY
@@ -754,13 +753,13 @@ class TBlob : public Blob {
   //add by ingenic
   template<typename T = Dtype>
   const T* cpu_connectivity() const {
-    check_integrity(true, connectivity_type(), tp<T>());
+    check_integrity(true, data_type(), tp<T>());
     return Blob::cpu_connectivity<T>();
   }
 
   template<typename T = Dtype>
   T* mutable_cpu_connectivity() {
-    check_integrity(true, connectivity_type(), tp<T>());
+    check_integrity(true, data_type(), tp<T>());
     return Blob::mutable_cpu_connectivity<T>();
   }
   //~add by ingenic
@@ -791,14 +790,14 @@ class TBlob : public Blob {
   //add by ingenic
   template<typename T = Dtype>
   const T* gpu_connectivity() const {
-    check_integrity(true, connectivity_type(), tp<T>());
+    check_integrity(true, data_type(), tp<T>());
     return Blob::gpu_connectivity<T>();
   }
 
   template<typename T = Dtype>
   T* mutable_gpu_connectivity() {
     LOG(INFO) << "hello here!: mutable_gpu_connectivity";
-    check_integrity(true, connectivity_type(), tp<T>());
+    check_integrity(true, data_type(), tp<T>());
     LOG(INFO) << "hello here!: mutable_gpu_connectivity";
     return Blob::mutable_gpu_connectivity<T>();
   }

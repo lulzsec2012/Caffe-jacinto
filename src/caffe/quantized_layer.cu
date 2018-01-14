@@ -21,13 +21,16 @@ void QuantizedLayer<Ftype, Btype>::Quantize_gpu(const vector<Blob*>& bottom,
 
       // Trim weights - do it only at the start of quantization
       if(param.qparam_w().quantize() && blobs.size() > 0 && param.quantized_infer_count() == 1100) {
-        LOG(INFO) << "hello here!: " << this->layer_param_.name();
-        LOG(INFO) << "blobs[0]->is_current_data_valid(): " << blobs[0]->is_current_data_valid();
-        LOG(INFO) << "blobs[0]->is_current_connectivity_valid(): " << blobs[0]->is_current_connectivity_valid();
         //this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);//connectivity
-        this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);//connectivity
+	if (this->type() == std::string("Convolution") && this->layer_param_.name() == std::string("res3a_branch2a") && 0) {
+           //LOG(INFO) << "hello ingenic!: " << this->layer_param_.name();
+           //LOG(INFO) << "hello ingenic!: " << this->layer_param_.name()<< "blobs[0]->is_current_connectivity_valid(): " << blobs[0]->is_current_connectivity_valid();	
+           //this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);//connectivity
+	}else{
+           //LOG(INFO) << "hello world!: " << this->layer_param_.name()<< "blobs[0]->is_current_connectivity_valid(): " << blobs[0]->is_current_connectivity_valid();	
+           //this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
+	}
 	//this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
-        LOG(INFO) << "hello here2!: " << this->layer_param_.name();
 	///this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
         //if (blobs.size() > 1) { //(this->bias_term_) {
         //  this->QuantizeWeights_gpu(blobs[1]->mutable_gpu_data<Ftype>(), blobs[1]->count(), false);

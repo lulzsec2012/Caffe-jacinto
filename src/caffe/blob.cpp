@@ -854,10 +854,50 @@ void Blob::StoreSparseModeConnectivity(const SparseMode mode) {
 }
 
 //add by ingenic
-void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *partation) {
+void weightCluster_zero(float* data, const int M, float* connectivity, bool clip, const int cnt)
+{
+  LOG(INFO)<<"weightCluster_zero:"<<" M="<<M<< "data:"<<data<<" connectivity:"<<connectivity<<" count_:"<<cnt;
+  for(int index=0;index<cnt;index++){
+    float weight = data[index];
+    // Saturate data
+    if(clip) {
+      weight = std::max(std::min((double)weight, pow(2,M)), -pow(2,M));
+    }     
+    double min=100;
+    double ind=0;
+    double flag=1.0;
+    if(connectivity[index] < 0.00001 && connectivity[index] > -0.00001 ){
+      if(min>std::abs(weight))
+	{
+	  min=std::abs(weight);
+	  flag=0.0;
+	}
+      
+      for(int i=(M-2);i<=M;i++)//6
+	{
+	  if(min>std::abs(weight-pow(2,i)))
+	    {
+	      min=std::abs(weight-pow(2,i));
+	      ind=i;
+	      flag=1.0;
+	    }
+	  if(min>std::abs(weight+pow(2,i)))
+	    {
+	      min=std::abs(weight+pow(2,i));
+	      ind=i;
+	      flag=-1.0;
+	    }
+	}
+      data[index] = flag*pow(2,ind);
+    }else{
+      data[index] = weight;
+    } 
+  }
+}
+  void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *partation, float max_val_abs) {
   StoreSparseModeConnectivity(mode);
   
-  const shared_ptr<SyncedMemory>& data_mem = data_tensor_->synced_mem();
+  const shared_ptr<SyncedMemory>& data_mem = data_tensor_->mutable_synced_mem();
   if (!data_mem) {
     return;
   }
@@ -902,6 +942,7 @@ void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *p
   float * pconnect = static_cast<float*>(connectivity_mem->mutable_cpu_data());
   float * data = static_cast<float*>(data_mem->mutable_cpu_data());
   int sparsityCount = 0;
+ 
   for(int i=0;i<count_;i++){
     if(data[i]<0.000001 && data[i]>-0.000001){
       pconnect[i] = 0;
@@ -912,6 +953,11 @@ void Blob::StoreQuantMaskConnectivity(const SparseMode mode, int round, float *p
   for(int i=0;i<count_;i++){
     pconnect[i] *= pmask[i];
   }
+
+  int n1=(int)floor(log2(max_val_abs*4.0/3.0));
+  weightCluster_zero(data, n1, pconnect, true, count_);
+    
+  std::cout<<"count_="<<count_<<std::endl;
   free(pmask);
 }
 //~add by ingenic
