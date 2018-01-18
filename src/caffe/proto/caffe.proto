@@ -258,7 +258,8 @@ message NetQuantizationParameter {
   optional uint32 bitwidth_weights = 5 [default = 12];
         
   optional bool quantize_weights = 8 [default = true];
-  optional bool quantize_activations = 9 [default = true];   
+  optional bool quantize_activations = 9 [default = true];
+  optional bool quantize_bias = 15 [default = false];	
     
   optional int32 display_quantization = 10 [default = 2000];
   optional bool insert_quantization_param = 11 [default = true];

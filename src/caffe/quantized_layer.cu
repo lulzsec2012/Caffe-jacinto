@@ -1,6 +1,6 @@
 #include "caffe/quantized_layer.hpp"
 #include "caffe/quantized_layer.cuh"
-
+#include "cuda_runtime.h" //add by ingenic
 namespace caffe {
 
 
@@ -166,6 +166,82 @@ void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_gpu(Ftype* data, const int cn
   Trim2FixedPoint_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(
       data, cnt, bitwidth, rounding, scale, inv_scale, offset, min_data, max_data, clip);
 }
+
+//add by ingenic
+template <typename Dtype>
+__global__ void Trim2FixedPoint_kernel_KL(Dtype* data, Dtype* data_tmp, const int cnt,
+    const int bitwidth, const int rounding, float scale, float inv_scale, float offset, float min_data, float max_data, bool clip, float * KL_loss) {
+    CUDA_KERNEL_LOOP(index, cnt) {
+
+    data_tmp[index] = (data[index] * scale) + offset;
+
+    // Round data
+    switch (rounding) {
+    case QuantizationParameter_Rounding_NEAREST:
+      data_tmp[index] = rint(data_tmp[index]);
+      break;
+    case QuantizationParameter_Rounding_STOCHASTIC:
+      data_tmp[index] = __float2int_rd(data_tmp[index] + RandUniform_device(index));
+      break;
+    default:
+      break;
+    }
+
+    // Saturate data
+    if(clip) {
+      data_tmp[index] = (data_tmp[index]>(Dtype)max_data? (Dtype)max_data:
+        (data_tmp[index]<(Dtype)min_data?(Dtype)min_data:data_tmp[index]));
+    }
+
+    data_tmp[index] = (data_tmp[index] - offset) * inv_scale;
+    &KL_loss += abs(data_tmp[index] - data[index]);
+  }
+}
+
+template<typename Ftype, typename Btype>
+void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_gpu_KL(Ftype* data, const int cnt, bool power2_range,
+      const int bitwidth, const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip) {
+  float inv_scale = 1.0f/scale;
+
+  int qrange = unsigned_quant? bitwidth :  (bitwidth - 1);
+  float min_data = unsigned_quant? 0 : -(powf(2, qrange));
+  float max_data = +(powf(2, qrange) - 1);
+
+  //
+  int *data_tmp = 0;  
+  cudaError_t cudaStatus = cudaMalloc((void**)&data_tmp, cnt * sizeof(Ftype));  
+  if (cudaStatus != cudaSuccess) {  
+     fprintf(stderr, "cudaMalloc failed!");
+     LOG(FATAL) << "cudaMalloc failed!" << " for layer:" << this->layer_param_.name();
+     cudaFree(data_tmp);  
+    }  
+  float min_factor=0.5;
+  float max_factor=1.2;
+  int   step = 100;
+  float factor_step = (max_factor - min_factor)/step;
+  float best_KL_loss = 10000;
+  int best_step = 0;//71
+  for(int i=0;i<step;i++){
+     scale_cur = scale * (max_factor + factor_step*i);
+     inv_scale = 1.0f/scale_cur;
+     float kl_loss = cal_KL_loss();
+     if(best_KL_loss > kl_loss){
+       best_KL_loss = kl_loss;
+       best_step = i;
+     }
+  }
+  if(data_tmp != NULL){
+    cudaFree(data_tmp);
+  }
+
+  LOG(FATAL) << "Best KL factor is:" << max_factor + factor_step*best_step << " for layer:" << this->layer_param_.name();
+  scale = scale * (max_factor + factor_step*best_step);
+  inv_scale = 1.0f/scale;
+  Trim2FixedPoint_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(
+      data, cnt, bitwidth, rounding, scale, inv_scale, offset, min_data, max_data, clip);
+}
+
+//~add by ingenic
 
 //add by ingenic
 template <typename Dtype>

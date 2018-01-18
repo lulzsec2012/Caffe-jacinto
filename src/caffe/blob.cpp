@@ -873,7 +873,7 @@ void weightCluster_zero(float* data, const int M, float* connectivity, bool clip
 	  flag=0.0;
 	}
       
-      for(int i=(M-2);i<=M;i++)//6
+      for(int i=(M-6);i<=M;i++)//6
 	{
 	  if(min>std::abs(weight-pow(2,i)))
 	    {

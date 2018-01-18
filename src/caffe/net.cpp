@@ -1717,8 +1717,11 @@ void Net::UpdateQuantizationRangeInLayers() {
 	float max_weights = std::numeric_limits<float>::lowest();
 	if(num_params > 0) {
 		for(int blob_id = 0; blob_id < num_params; blob_id++) {
-          min_weights = std::min(min_weights, (float)layers_[layer_id]->blobs()[blob_id]->min(0, 0));
+		  min_weights = std::min(min_weights, (float)layers_[layer_id]->blobs()[blob_id]->min(0, 0));
 		  max_weights = std::max(max_weights, (float)layers_[layer_id]->blobs()[blob_id]->max(0, 0));
+		  if(max_params_to_consider==1){
+		    break;
+		  }
 		}
 
 		//for weights, we can use the actual range - no need for running average.

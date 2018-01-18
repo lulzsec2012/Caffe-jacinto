@@ -42,6 +42,10 @@ public:
       const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip);
   void Trim2FixedPoint_gpu(Ftype* data, const int cnt, bool power2_range, const int bitwidth,
       const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip);
+  //add by ingenic
+  void Trim2FixedPoint_gpu_KL(Ftype* data, const int cnt, bool power2_range, const int bitwidth,
+      const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip);
+  //~add by ingenic
 
   //add by ingenic
   void Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, const float min, const float max, bool clip);
