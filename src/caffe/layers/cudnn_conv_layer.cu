@@ -75,8 +75,9 @@ void CuDNNConvolutionLayer<Ftype, Btype>::Forward_gpu(const vector<Blob*>& botto
   }
 
   ++fwd_count_;
-  
-  this->Quantize_gpu(bottom, top);    
+
+  this->Quantize_gpu(bottom, top);
+
 }
 
 template <typename Ftype, typename Btype>

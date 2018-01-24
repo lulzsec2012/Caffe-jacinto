@@ -1957,7 +1957,8 @@ void Net::DisplayQuantizationParams() {
         LOG(INFO) << ss.str();
       }
 
-      if (net_qparam.quantize_activations() && quantization_param.qparam_w().quantize()) {
+      //if (net_qparam.quantize_activations() && quantization_param.qparam_w().quantize()) {
+	if (net_qparam.quantize_activations()) {
         LOG(INFO)<< " Q output:" << i << " Name:" << layers_[i]->layer_param().name() <<
         " bitwidth:" << quantization_param.qparam_out().bitwidth() <<
         " fracbits:" << quantization_param.qparam_out().fracbits() <<

@@ -20,18 +20,9 @@ void QuantizedLayer<Ftype, Btype>::Quantize_gpu(const vector<Blob*>& bottom,
       }
 
       // Trim weights - do it only at the start of quantization
-      if(param.qparam_w().quantize() && blobs.size() > 0 && param.quantized_infer_count() == 1100) {
+      if(param.qparam_w().quantize() && blobs.size() > 0 && param.quantized_infer_count() == 0) {
         //this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);//connectivity
-	if (this->type() == std::string("Convolution") && this->layer_param_.name() == std::string("res3a_branch2a") && 0) {
-           //LOG(INFO) << "hello ingenic!: " << this->layer_param_.name();
-           //LOG(INFO) << "hello ingenic!: " << this->layer_param_.name()<< "blobs[0]->is_current_connectivity_valid(): " << blobs[0]->is_current_connectivity_valid();	
-           //this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);//connectivity
-	}else{
-           //LOG(INFO) << "hello world!: " << this->layer_param_.name()<< "blobs[0]->is_current_connectivity_valid(): " << blobs[0]->is_current_connectivity_valid();	
-           //this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
-	}
-	//this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
-	///this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
+	this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
         //if (blobs.size() > 1) { //(this->bias_term_) {
         //  this->QuantizeWeights_gpu(blobs[1]->mutable_gpu_data<Ftype>(), blobs[1]->count(), false);
         //}
@@ -170,7 +161,8 @@ void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_gpu(Ftype* data, const int cn
 //add by ingenic
 template <typename Dtype>
 __global__ void Trim2FixedPoint_kernel_KL(Dtype* data, Dtype* data_tmp, const int cnt,
-    const int bitwidth, const int rounding, float scale, float inv_scale, float offset, float min_data, float max_data, bool clip, float * KL_loss) {
+    const int bitwidth, const int rounding, float scale, float inv_scale, float offset, float min_data, float max_data, bool clip, float * dev_KL_loss) {
+
     CUDA_KERNEL_LOOP(index, cnt) {
 
     data_tmp[index] = (data[index] * scale) + offset;
@@ -192,10 +184,24 @@ __global__ void Trim2FixedPoint_kernel_KL(Dtype* data, Dtype* data_tmp, const in
       data_tmp[index] = (data_tmp[index]>(Dtype)max_data? (Dtype)max_data:
         (data_tmp[index]<(Dtype)min_data?(Dtype)min_data:data_tmp[index]));
     }
-
+    if(data_tmp[index]>-0.00001 && data_tmp[index] < 0.00001){
+      data_tmp[index] = 0;
+    }else{
     data_tmp[index] = (data_tmp[index] - offset) * inv_scale;
-    &KL_loss += abs(data_tmp[index] - data[index]);
+    data_tmp[index] = data[index] * log(data[index]/data_tmp[index]);
+    }
+    //data_tmp[index] = (data_tmp[index] - offset) * inv_scale - data[index];
+    //data_tmp[index] = abs(data_tmp[index]);
   }
+  
+  for(int i = 1;i < blockDim.x ; i <<= 1){
+    if(threadIdx.x % (i<<1) == i){
+        data_tmp[threadIdx.x - i] += data_tmp[threadIdx.x];
+    }
+    __syncthreads();        
+  }    
+
+  if(threadIdx.x == 0)    *dev_KL_loss = data_tmp[0];
 }
 
 template<typename Ftype, typename Btype>
@@ -206,36 +212,62 @@ void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_gpu_KL(Ftype* data, const int
   int qrange = unsigned_quant? bitwidth :  (bitwidth - 1);
   float min_data = unsigned_quant? 0 : -(powf(2, qrange));
   float max_data = +(powf(2, qrange) - 1);
-
   //
-  int *data_tmp = 0;  
+  Ftype *data_tmp = 0;  
   cudaError_t cudaStatus = cudaMalloc((void**)&data_tmp, cnt * sizeof(Ftype));  
   if (cudaStatus != cudaSuccess) {  
      fprintf(stderr, "cudaMalloc failed!");
      LOG(FATAL) << "cudaMalloc failed!" << " for layer:" << this->layer_param_.name();
      cudaFree(data_tmp);  
-    }  
+  }
+  float *dev_KL_loss = 0;
+  cudaStatus = cudaMalloc((void**)&dev_KL_loss, 1 * sizeof(float));  
+  if (cudaStatus != cudaSuccess) {  
+     LOG(INFO)<<"cudaMalloc failed!";
+     cudaFree(dev_KL_loss);
+     dev_KL_loss = 0;
+  }
   float min_factor=0.5;
   float max_factor=1.2;
   int   step = 100;
   float factor_step = (max_factor - min_factor)/step;
   float best_KL_loss = 10000;
-  int best_step = 0;//71
+  int best_step = 71;//71
   for(int i=0;i<step;i++){
-     scale_cur = scale * (max_factor + factor_step*i);
+     float KL_loss = 10000;
+     float scale_cur = scale * (min_factor + factor_step*i);
      inv_scale = 1.0f/scale_cur;
-     float kl_loss = cal_KL_loss();
-     if(best_KL_loss > kl_loss){
-       best_KL_loss = kl_loss;
+     
+     Trim2FixedPoint_kernel_KL<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(	
+      data, data_tmp, cnt, bitwidth, rounding, scale_cur, inv_scale, offset, min_data, max_data, clip, dev_KL_loss);
+     // Copy output vector from GPU buffer to host memory.  
+     cudaStatus = cudaMemcpy(&KL_loss, dev_KL_loss, 1 * sizeof(float), cudaMemcpyDeviceToHost);  
+     if (cudaStatus != cudaSuccess) {
+       LOG(INFO)<<"Copy output vector failed!";
+       cudaFree(dev_KL_loss);
+       dev_KL_loss = 0;
+     }
+     if(0==i){
+       best_KL_loss = KL_loss;
+     }
+     if(best_KL_loss > KL_loss){
+       best_KL_loss = KL_loss;
        best_step = i;
+       //LOG(INFO)<<"hello inegnic!"<<i<<" KL_loss="<<KL_loss;
      }
   }
   if(data_tmp != NULL){
     cudaFree(data_tmp);
+    data_tmp = NULL;
+  }
+  if (dev_KL_loss != NULL) {
+     cudaFree(dev_KL_loss);
+     dev_KL_loss = 0;
   }
 
-  LOG(FATAL) << "Best KL factor is:" << max_factor + factor_step*best_step << " for layer:" << this->layer_param_.name();
-  scale = scale * (max_factor + factor_step*best_step);
+  LOG(INFO) << "Best KL factor is:" << min_factor + factor_step*best_step <<" best_step=" << best_step << " for layer:" << this->layer_param_.name();
+  scale = scale * (min_factor + factor_step*best_step);
+  //scale = scale * 1.0f;	
   inv_scale = 1.0f/scale;
   Trim2FixedPoint_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(
       data, cnt, bitwidth, rounding, scale, inv_scale, offset, min_data, max_data, clip);

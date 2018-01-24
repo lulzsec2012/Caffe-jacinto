@@ -958,7 +958,9 @@ void weightCluster_zero(float* data, const int M, float* connectivity, bool clip
   weightCluster_zero(data, n1, pconnect, true, count_);
     
   std::cout<<"count_="<<count_<<std::endl;
-  free(pmask);
+  if(pmask != NULL){
+    free(pmask);
+  }
 }
 //~add by ingenic
 
