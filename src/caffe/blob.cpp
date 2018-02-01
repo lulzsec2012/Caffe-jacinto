@@ -955,7 +955,7 @@ void weightCluster_zero(float* data, const int M, float* connectivity, bool clip
   }
 
   int n1=(int)floor(log2(max_val_abs*4.0/3.0));
-  weightCluster_zero(data, n1, pconnect, true, count_);
+  //weightCluster_zero(data, n1, pconnect, true, count_);
     
   std::cout<<"count_="<<count_<<std::endl;
   if(pmask != NULL){

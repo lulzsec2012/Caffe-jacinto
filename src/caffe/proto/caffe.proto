@@ -234,7 +234,9 @@ message QuantizationParameter {
     optional float scale = 7 [default = 0];
     optional float offset = 8 [default = 0];    
     optional float min = 9 [default = 0];
-    optional float max = 10 [default = 0];    
+    optional float max = 10 [default = 0];
+    optional uint32 scaleparam_m = 11 [default = 0];	
+    optional int32  scaleparam_n = 12 [default = 0];    
   }
   repeated QParams qparam_in = 5;
   optional QParams qparam_out = 6;

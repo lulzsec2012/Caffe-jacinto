@@ -294,6 +294,9 @@ class Net {
   void SetQuantizationParamsLayerWeights(const int layer_id);
   void SetQuantizationParamsLayerInput(const int layer_id);
   void SetQuantizationParamsLayerOutput(const int layer_id);
+  void SetQuantizationParamsLayerScaleParamMN(const int layer_id);//add by ingenic
+  void ComputeScaleParamMN(float min_input, float max_input, float min_output, float max_output,
+			   float min_weights, float max_weights, QuantizationParameter::QParams& qparam_xx);//add by ingenic
   void SetQuantizationParams();
   void DisplayQuantizationParams();
   void DisableQuantization();

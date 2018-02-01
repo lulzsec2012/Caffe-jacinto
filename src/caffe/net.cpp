@@ -677,9 +677,9 @@ float Net::ForwardFromTo(int start, int end) {
 
   float loss = 0;
   for (int i = start; i <= end; ++i) {
-    // LOG(INFO) << " ****** [Forward] (" << i << ") Layer '" << layer_names_[i];
-    // << "' FT " << Type_Name(layers_[i]->forward_type())
-    // << " BT " << Type_Name(layers_[i]->backward_type());
+    //LOG(INFO) << " ****** [Forward] (" << i << ") Layer '" << layers_[i]->name();
+      //<< "' FT " << Type_Name(layers_[i]->forward_type())
+      //<< " BT " << Type_Name(layers_[i]->backward_type());
     float layer_loss = layers_[i]->Forward(bottom_vecs_[i], top_vecs_[i]);
     loss += layer_loss;
     if (debug_info_) { ForwardDebugInfo(i); }
@@ -1678,7 +1678,7 @@ void Net::UpdateQuantizationRangeInLayers() {
     min_in_[layer_id].resize(bottom_vecs_[layer_id].size(), 0);
     max_in_[layer_id].resize(bottom_vecs_[layer_id].size(), 0);
   }
-  if(infer_count_>1000)return;
+  //if(infer_count_>1000)return;
   // Find maximal values.
   float expansion_factor = (infer_count_ <= net_qparam.quantization_start()? 2.0 : (net_qparam.power2_range()? 1.0 : 1.2));
   float alpha = (infer_count_ <= net_qparam.quantization_start()? 0.0 : 0.90);
@@ -1811,6 +1811,8 @@ void Net::SetQuantizationParams() {
 
         // quantize output activations
         SetQuantizationParamsLayerOutput(layer_id);
+
+	SetQuantizationParamsLayerScaleParamMN(layer_id);
       }
     }
   }
@@ -1921,6 +1923,58 @@ void Net::SetQuantizationParamsLayerWeights(const int layer_id) {
         net_qparam.power2_range(), unsigned_data, net_qparam.apply_offset_weights(), qparam_w);
   }
 }
+
+//add by ingenic
+void Net::ComputeScaleParamMN(float min_input, float max_input, float min_output, float max_output,
+			   float min_weights, float max_weights, QuantizationParameter::QParams& qparam_xx){
+  float max_input_real = std::max(std::abs(min_input), std::abs(max_input));
+  float max_output_real = std::max(std::abs(min_output), std::abs(max_output));
+  float max_weights_real = std::max(std::abs(min_weights), std::abs(max_weights));
+  float scale = max_weights_real * max_input_real / max_output_real / 127.0;
+
+  float min_loss = 100.0;
+  int best_n = -1;
+  for(int n=-32;n<32;n++){
+    int m = round(scale * int(pow(2,n)));    
+    if(m>0 && m < 256){
+      float loss = std::abs(scale - m/pow(2,n));
+      if(min_loss>loss){
+	min_loss = loss;
+	best_n = n;
+      }
+    }
+  }
+  qparam_xx.set_scaleparam_n(best_n);
+  int best_m = round(scale * int(pow(2,best_n)));    
+  qparam_xx.set_scaleparam_m(best_m);
+}
+
+void Net::SetQuantizationParamsLayerScaleParamMN(const int layer_id) {
+  const NetQuantizationParameter& net_qparam = net_param_.net_quantization_param();
+  QuantizationParameter& quantization_param = *layers_[layer_id]->mutable_layer_param().mutable_quantization_param();
+  if(layers_[layer_id]->blobs().size() > 0) {
+    //
+    int num_bottom_vecs = bottom_vecs_[layer_id].size();
+    if(num_bottom_vecs != 1){
+      LOG(FATAL)<<"num_bottom_vecs != 1!";
+      exit(0);
+    }
+    QuantizationParameter::QParams& qparam_in = *quantization_param.mutable_qparam_in(0);
+    QuantizationParameter::QParams& qparam_out = *quantization_param.mutable_qparam_out();
+    QuantizationParameter::QParams& qparam_w = *quantization_param.mutable_qparam_w();
+    //
+    float min_input = qparam_in.min();
+    float max_input = qparam_in.max();
+    float min_output = qparam_out.min();
+    float max_output = qparam_out.max();
+    float min_weights = qparam_w.min();
+    float max_weights = qparam_w.max();
+
+    ComputeScaleParamMN(min_input, max_input, min_output, max_output,
+		    min_weights, max_weights, qparam_w);
+  }
+}
+//~add by ingenic
 
 
 void Net::DisplayQuantizationParams() {
@@ -2190,7 +2244,7 @@ void Net::StoreSparseModeConnectivity(SparseMode mode) {
       if(layers_[i]->type() == std::string("Convolution")) {
         LayerBase& conv_layer = *layers_[i];
         Blob& conv_weights = *conv_layer.blobs()[0];
-
+	LOG(INFO)<<"conv_layer.name():"<<conv_layer.name();
         //Store the non-zero weight information
         conv_weights.StoreSparseModeConnectivity(mode);
       }

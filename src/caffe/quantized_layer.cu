@@ -20,9 +20,14 @@ void QuantizedLayer<Ftype, Btype>::Quantize_gpu(const vector<Blob*>& bottom,
       }
 
       // Trim weights - do it only at the start of quantization
-      if(param.qparam_w().quantize() && blobs.size() > 0 && param.quantized_infer_count() == 0) {
-        //this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);//connectivity
-	this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
+      if(param.qparam_w().quantize() && blobs.size() > 0 && param.quantized_infer_count() % param.sparsity_step_iter() == 0) {
+	if (this->type() == std::string("Convolution")) { //|| this->type() == std::string("InnerProduct")
+ 	//LOG(INFO)<<"this->name():"<<this->name()<<"in:"<<blobs[0]->is_current_connectivity_valid();	
+	  this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);//connectivity
+	//this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
+	}else{
+	  this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->count(), true);
+	}
         //if (blobs.size() > 1) { //(this->bias_term_) {
         //  this->QuantizeWeights_gpu(blobs[1]->mutable_gpu_data<Ftype>(), blobs[1]->count(), false);
         //}
@@ -41,15 +46,14 @@ void QuantizedLayer<Ftype, Btype>::Quantize_gpu(const vector<Blob*>& bottom,
 //add by ingenic
 template<typename Ftype, typename Btype>
 void QuantizedLayer<Ftype, Btype>::QuantizeWeights_gpu(Ftype* data, Ftype* connectivity, const int count, bool clip) {
-  LOG(INFO) << "hello here!: qiangzhileixingzhuangh";     
   const QuantizationParameter& param = this->layer_param_.quantization_param();
   const QuantizationParameter::QParams& qparam_w = param.qparam_w();
   switch (param.precision()) {
   case QuantizationParameter_Precision_DYNAMIC_FIXED_POINT:
-    //Trim2INQ_gpu(data, connectivity, count, qparam_w.bitwidth(), qparam_w.min(), qparam_w.max(), clip);	
-    Trim2FixedPoint_gpu(data, count, param.power2_range(), qparam_w.bitwidth(),
-        param.rounding_scheme(), qparam_w.fracbits(), qparam_w.scale(),
-        qparam_w.offset(), qparam_w.unsigned_quant(), clip);
+    Trim2INQ_gpu(data, connectivity, count, qparam_w.bitwidth(), qparam_w.min(), qparam_w.max(), clip);	
+    //Trim2FixedPoint_gpu(data, count, param.power2_range(), qparam_w.bitwidth(),
+    //    param.rounding_scheme(), qparam_w.fracbits(), qparam_w.scale(),
+    //    qparam_w.offset(), qparam_w.unsigned_quant(), clip);
     break;
   case QuantizationParameter_Precision_FLOAT:
 	  break;
@@ -325,9 +329,9 @@ void QuantizedLayer<Ftype, Btype>::Trim2INQ_gpu(Ftype* data, Ftype* connectivity
   float max_val_abs = std::max(std::fabs(max), std::fabs(min));
   this->QuantizeWeights_gpu(data, cnt, true);	  
   //caculate the n1
-  //int n1=(int)floor(log2(max*4.0/3.0));
+  int n1=(int)floor(log2(max*4.0/3.0));
   //LOG(INFO) << "weightCluster_zero_kernel: " << " for layer:" << this->layer_param_.name();	
-  //weightCluster_zero_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(data,n1,connectivity,clip,cnt);
+  weightCluster_zero_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(data,n1,connectivity,clip,cnt);
 }
 
 //~add by ingenic
