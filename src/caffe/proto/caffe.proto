@@ -539,6 +539,12 @@ message SolverParameter {
   optional int32 sparsity_start_iter = 157 [default = 0];  //sprsity start iteration  
   optional float sparsity_start_factor = 158 [default = 0.0];  //sprsity start factor
   optional float sparsity_threshold_maxratio = 159 [default = 0.2]; //default ratio of the max threshold allowed to the max weight
+  optional bool  sparsity_with_innerprudect = 160 [default = true];  //sprsity for innerprudect layer
+
+  optional bool  inq_quant = 161 [default = false];  //inq quant
+  optional int32 inq_start_iter = 162 [default = 0];  //inq start iteration
+  optional int32 inq_step_iter = 163 [default = 1000];  //inq step increment iterations
+  repeated float inq_partation = 164;  //inq partations
 }
 
 // A message that stores the solver snapshots

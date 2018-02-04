@@ -314,10 +314,10 @@ class Net {
   void FindAndApplyThresholdNet(float threshold_fraction_low, float threshold_fraction_mid, float threshold_fraction_high,
       float threshold_value_maxratio, float threshold_value, float threshold_step_factor, bool verbose = true);
   void FindAndApplyChannelThresholdNet(float threshold_fraction_low, float threshold_fraction_mid, float threshold_fraction_high,
-      float threshold_value_maxratio, float threshold_value, float threshold_step_factor, bool verbose = true);
-  void ApplySparseModeConnectivity(SparseMode mode);  
-  void StoreSparseModeConnectivity(SparseMode mode);
-  void StoreQuantMaskConnectivity(SparseMode mode, int round, float *partation);//add by ingenic
+      float threshold_value_maxratio, float threshold_value, float threshold_step_factor, bool sparsity_with_innerprudect, bool verbose = true);
+  void ApplySparseModeConnectivity(SparseMode mode, bool sparsity_with_innerprudect);  
+  void StoreSparseModeConnectivity(SparseMode mode, bool sparsity_with_innerprudect);
+  void StoreQuantMaskConnectivity(SparseMode mode, int round, float *partation, bool sparsity_with_innerprudect);//add by ingenic
   float DisplaySparsity(bool verbose);
   float DisplayConnectivitySparsity(bool verbose);
   

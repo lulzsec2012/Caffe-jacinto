@@ -406,7 +406,6 @@ void Solver::Reduce(int device, Caffe::Brew mode, uint64_t random_seed,
 void Solver::ThresholdNet() {
   //induce incremental sparsity
   if (param_.sparse_mode() != SPARSE_NONE && Caffe::root_solver()) {
-    LOG(INFO) << "Hello world!B:"<< (param_.sparsity_target() > 0.0) <<":"<< (iter_ >= param_.sparsity_start_iter()) <<":"<< ((iter_ % param_.sparsity_step_iter())==0);
     if(param_.sparsity_target() > 0.0 && iter_ >= param_.sparsity_start_iter() &&
         (iter_ % param_.sparsity_step_iter())==0) {
       float threshold_fraction_low = this->sparsity_factor_/2;
@@ -414,10 +413,10 @@ void Solver::ThresholdNet() {
       float threshold_fraction_high = this->sparsity_factor_;
       float threshold_step_factor = 1e-7;//1e-6;
       float sparsity_target_max = std::min((param_.sparsity_target() + 0.15), 0.95);
-      LOG(INFO) << "Hello world!B";
+
       float sparsity_achieved = this->DisplayConnectivitySparsity(false);
       if(this->sparsity_factor_ <= sparsity_target_max && sparsity_achieved < param_.sparsity_target()) {
-	LOG(INFO) << "Hello world!C";
+
         float threshold_value_maxratio = param_.sparsity_threshold_maxratio(); //0.1; //0.2;
         float threshold_value_max = 0.2;
 
@@ -433,7 +432,7 @@ void Solver::ThresholdNet() {
 
         //try output channel-wise sparsity
         net_->FindAndApplyChannelThresholdNet(threshold_fraction_low, threshold_fraction_mid, threshold_fraction_high,
-          threshold_value_maxratio, threshold_value_max, threshold_step_factor, false);
+					      threshold_value_maxratio, threshold_value_max, threshold_step_factor, param_.sparsity_with_innerprudect(), false);
 
         //if sparsity is still not achieved, try to achieve by layer-wise sparsity and aggressive factors.
         //if(sparsity_factor_ >= sparsity_target_max) {
@@ -447,32 +446,25 @@ void Solver::ThresholdNet() {
       }
     }
 
-    net_->ApplySparseModeConnectivity(param_.sparse_mode());
+    net_->ApplySparseModeConnectivity(param_.sparse_mode(), param_.sparsity_with_innerprudect());
   }
 }
 
 //add by ingenic
 void Solver::INQ() {
   //induce incremental quantition
-  if (param_.sparse_mode() == SPARSE_INQ && Caffe::root_solver()) {
-    if(iter_ >= param_.sparsity_start_iter() && (iter_ % param_.sparsity_step_iter())==0) {
-      float partation[]={0, 0.3, 0.6, 0.8 , 0.9, 1.0};
-      LOG(INFO) << " param_.sparse_mode=" << param_.sparse_mode()
-		<< " round=" << (iter_ / param_.sparsity_step_iter())
-		<< " partation[i]=" << partation[(iter_ / param_.sparsity_step_iter())]
-		<< " iter=" << iter_;
-      int round = iter_ / param_.sparsity_step_iter();
-      round = std::min(6,round);
-      net_->StoreQuantMaskConnectivity(param_.sparse_mode(), round, partation);
+  if (param_.sparse_mode() == SPARSE_UPDATE && Caffe::root_solver()) {
+    if(iter_ >= param_.sparsity_start_iter()) {
+      net_->StoreQuantMaskConnectivity(param_.sparse_mode(), iter_, param_.sparsity_with_innerprudect());
     }
-    net_->ApplySparseModeConnectivity(param_.sparse_mode());
+    net_->ApplySparseModeConnectivity(param_.sparse_mode(), param_.sparsity_with_innerprudect());
   }
 }
 //~add by ingenic
 
 void Solver::StoreSparseModeConnectivity() {
-  if (param_.sparse_mode() == caffe::SPARSE_UPDATE || param_.sparse_mode() == caffe::SPARSE_INQ) {
-    net_->StoreSparseModeConnectivity(param_.sparse_mode());
+  if (param_.sparse_mode() == caffe::SPARSE_UPDATE) {
+    net_->StoreSparseModeConnectivity(param_.sparse_mode(), param_.sparsity_with_innerprudect());
   }
 }
 

@@ -48,8 +48,11 @@ public:
   //~add by ingenic
 
   //add by ingenic
-  void Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, const float min, const float max, bool clip);
-  void Trim2INQ_gpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, const float min, const float max, bool clip);
+  //void Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, float min, float max, bool clip);
+  void Trim2INQ_cpu(Ftype* data, Ftype* connectivity, const int cnt, bool power2_range,
+  		    const int bitwidth, const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip, const float min, const float max);
+  void Trim2INQ_gpu(Ftype* data, Ftype* connectivity, const int cnt, bool power2_range,
+		    const int bitwidth, const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip, const float min, const float max);
   //~add by ingenic
   /**
    * @brief Generate random number in [0,1) range.

@@ -20,7 +20,7 @@ void QuantizedLayer<Ftype, Btype>::Quantize_gpu(const vector<Blob*>& bottom,
       }
 
       // Trim weights - do it only at the start of quantization
-      if(param.qparam_w().quantize() && blobs.size() > 0 && param.quantized_infer_count() % param.sparsity_step_iter() == 0) {
+      if(param.qparam_w().quantize() && blobs.size() > 0 && param.quantized_infer_count() % 1000 == 0) { //param.sparsity_step_iter()
 	if (this->type() == std::string("Convolution")) { //|| this->type() == std::string("InnerProduct")
  	//LOG(INFO)<<"this->name():"<<this->name()<<"in:"<<blobs[0]->is_current_connectivity_valid();	
 	  this->QuantizeWeights_gpu(blobs[0]->mutable_gpu_data<Ftype>(), blobs[0]->mutable_gpu_connectivity<Ftype>(), blobs[0]->count(), true);//connectivity
@@ -50,7 +50,10 @@ void QuantizedLayer<Ftype, Btype>::QuantizeWeights_gpu(Ftype* data, Ftype* conne
   const QuantizationParameter::QParams& qparam_w = param.qparam_w();
   switch (param.precision()) {
   case QuantizationParameter_Precision_DYNAMIC_FIXED_POINT:
-    Trim2INQ_gpu(data, connectivity, count, qparam_w.bitwidth(), qparam_w.min(), qparam_w.max(), clip);	
+    Trim2INQ_gpu(data, connectivity, count, param.power2_range(), qparam_w.bitwidth(),
+		 param.rounding_scheme(), qparam_w.fracbits(), qparam_w.scale(),
+		 qparam_w.offset(), qparam_w.unsigned_quant(), clip,  qparam_w.min(), qparam_w.max());
+    
     //Trim2FixedPoint_gpu(data, count, param.power2_range(), qparam_w.bitwidth(),
     //    param.rounding_scheme(), qparam_w.fracbits(), qparam_w.scale(),
     //    qparam_w.offset(), qparam_w.unsigned_quant(), clip);
@@ -281,57 +284,98 @@ void QuantizedLayer<Ftype, Btype>::Trim2FixedPoint_gpu_KL(Ftype* data, const int
 
 //add by ingenic
 template <typename Dtype>
-__global__ void weightCluster_zero_kernel(Dtype* data, const int M,
-    Dtype* connectivity, bool clip, const int cnt) {
+  __global__ void Trim2FixedPointINQ_kernel(Dtype* data, Dtype* connectivity, const int cnt,
+    const int bitwidth, const int rounding, float scale, float inv_scale, float offset, float min_data, float max_data, bool clip) {
     CUDA_KERNEL_LOOP(index, cnt) {
-
-      Dtype weight;
-      // Saturate data
-      if(clip) {
-        weight = max(min(data[index], pow(2,M)), -pow(2,M));
-      }else{
-        weight = data[index];
-      }     
-      double min=100;
-      double ind=0;
-      double flag=1.0;
-      if(connectivity[index]==0){
-        if(min>std::abs(weight))
-          {
-	    min=std::abs(weight);
-	    flag=0.0;
-          }
-    
-        for(int i=(M-6);i<=M;i++)
-          {
-       	    if(min>std::abs(weight-pow(2,i)))
-	      {
-	        min=std::abs(weight-pow(2,i));
-	        ind=i;
-	        flag=1.0;
-	      }
-	    if(min>std::abs(weight+pow(2,i)))
-	      {
-	        min=std::abs(weight+pow(2,i));
-	        ind=i;
-	        flag=-1.0;
-	      }
-          }
-        data[index] = flag*pow(2,ind);
-      }else{
-        data[index] = weight;
-      } 
+      if(connectivity[index] < 0.00001 && connectivity[index] > -0.00001){
+	data[index] = (data[index] * scale) + offset;
+	
+	// Round data
+	switch (rounding) {
+	case QuantizationParameter_Rounding_NEAREST:
+	  data[index] = rint(data[index]);
+	  break;
+	case QuantizationParameter_Rounding_STOCHASTIC:
+	  data[index] = __float2int_rd(data[index] + RandUniform_device(index));
+	  break;
+	default:
+	  break;
+	}
+	
+	// Saturate data
+	if(clip) {
+	  data[index] = (data[index]>(Dtype)max_data? (Dtype)max_data:
+			 (data[index]<(Dtype)min_data?(Dtype)min_data:data[index]));
+	}
+	
+	data[index] = (data[index] - offset) * inv_scale;
+      }
     }
+ }
+ 
+template <typename Dtype>
+__global__ void Trim2INQ_kernel(Dtype* data, const int M,
+    Dtype* connectivity, bool clip, const int cnt) {
+  CUDA_KERNEL_LOOP(index, cnt) {
+    
+    Dtype weight;
+    // Saturate data
+    if(true) {
+      weight = max(min(data[index], pow(2,M)), -pow(2,M));
+    }else{
+      weight = data[index];
+    }     
+    double min=100;
+    double ind=0;
+    double flag=1.0;
+    if(connectivity[index] < 0.00001 && connectivity[index] > -0.00001){
+      if(min>std::abs(weight))
+	{
+	  min=std::abs(weight);
+	  flag=0.0;
+	}
+      
+      for(int i=(M-6);i<=M;i++)
+	{
+	  if(min>std::abs(weight-pow(2,i)))
+	    {
+	      min=std::abs(weight-pow(2,i));
+	      ind=i;
+	      flag=1.0;
+	    }
+	  if(min>std::abs(weight+pow(2,i)))
+	    {
+	      min=std::abs(weight+pow(2,i));
+	      ind=i;
+	      flag=-1.0;
+	    }
+	}
+      data[index] = flag*pow(2,ind);
+    }else{
+      data[index] = weight;
+    } 
   }
+}
   
 template<typename Ftype, typename Btype>
-void QuantizedLayer<Ftype, Btype>::Trim2INQ_gpu(Ftype* data, Ftype* connectivity, const int cnt, const int bitwidth, const float min, const float max, bool clip) {
+  void QuantizedLayer<Ftype, Btype>::Trim2INQ_gpu(Ftype* data, Ftype* connectivity, const int cnt, bool power2_range,
+				      const int bitwidth, const int rounding, int fracbits, float scale, float offset, bool unsigned_quant, bool clip, const float min, const float max) {
+  
   float max_val_abs = std::max(std::fabs(max), std::fabs(min));
-  this->QuantizeWeights_gpu(data, cnt, true);	  
   //caculate the n1
   int n1=(int)floor(log2(max*4.0/3.0));
-  //LOG(INFO) << "weightCluster_zero_kernel: " << " for layer:" << this->layer_param_.name();	
-  weightCluster_zero_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(data,n1,connectivity,clip,cnt);
+  Trim2INQ_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(data,n1,connectivity,clip,cnt);
+
+  //
+  float inv_scale = 1.0f/scale;
+
+  int qrange = unsigned_quant? bitwidth :  (bitwidth - 1);
+  float min_data = unsigned_quant? 0 : -(powf(2, qrange));
+  float max_data = +(powf(2, qrange) - 1);
+
+  //Trim2FixedPointINQ_kernel<<<CAFFE_GET_BLOCKS(cnt), CAFFE_CUDA_NUM_THREADS>>>(
+  //     data, connectivity, cnt, bitwidth, rounding, scale, inv_scale, offset, min_data, max_data, clip);
+  //
 }
 
 //~add by ingenic

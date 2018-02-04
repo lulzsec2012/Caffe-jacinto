@@ -2103,10 +2103,11 @@ void Net::FindAndApplyThresholdNet(float threshold_fraction_low, float threshold
 
 
 void Net::FindAndApplyChannelThresholdNet(float threshold_fraction_low, float threshold_fraction_mid, float threshold_fraction_high,
-    float threshold_value_maxratio, float threshold_value_max, float threshold_step_factor, bool verbose) {
+					  float threshold_value_maxratio, float threshold_value_max, float threshold_step_factor, bool sparsity_with_innerprudect, bool verbose) {
 
   for (int i = 0; i < layers_.size(); i++) {
-    if (layers_[i]->type() == std::string("Convolution")) {
+    //if (layers_[i]->type() == std::string("Convolution")) {
+    if (layers_[i]->type() == std::string("Convolution") || (layers_[i]->type() == std::string("InnerProduct")&&sparsity_with_innerprudect)) {
       LayerBase& conv_layer = *layers_[i];
       Blob& conv_weights = *conv_layer.blobs()[0];
       const ConvolutionParameter& conv_param = layers_[i]->layer_param().convolution_param();
@@ -2193,9 +2194,10 @@ void Net::FindAndApplyChannelThresholdNet(float threshold_fraction_low, float th
  * And just use it here. But the current implementation of this cuntion is more generic
  * since it can be used when thresholding is completely outside.
  */
-void Net::ApplySparseModeConnectivity(SparseMode mode) {
+  void Net::ApplySparseModeConnectivity(SparseMode mode, bool sparsity_with_innerprudect) {
   for (int i = 0; i < layers_.size(); i++) {
-    if (layers_[i]->type() == std::string("Convolution")) {
+    //if (layers_[i]->type() == std::string("Convolution")) {
+    if (layers_[i]->type() == std::string("Convolution") || (layers_[i]->type() == std::string("InnerProduct")&&sparsity_with_innerprudect)) { 
       LayerBase& conv_layer = *layers_[i];
       Blob& conv_weights = *conv_layer.blobs()[0];
 
@@ -2211,11 +2213,14 @@ void Net::ApplySparseModeConnectivity(SparseMode mode) {
 }
 
 //add by ingenic
-  void Net::StoreQuantMaskConnectivity(SparseMode mode, int round, float *partation) {
+void Net::StoreQuantMaskConnectivity(SparseMode mode, int iter, bool sparsity_with_innerprudect) {
   //LOG_IF(INFO, Caffe::root_solver()) << "All zero weights of convolution layers are frozen";
-  if(mode == SPARSE_INQ) {
+  const NetQuantizationParameter& net_qparam = net_param_.net_quantization_param();
+  if(mode != SPARSE_NONE && (net_qparam.inq_quant()&&net_qparam.inq_start_iter()<=iter&&(iter%net_qparam.inq_step_iter()==0))) {
+    
     for(int i=0; i<layers_.size(); i++) {
-      if(layers_[i]->type() == std::string("Convolution")) {
+      //if(layers_[i]->type() == std::string("Convolution")) {
+      if (layers_[i]->type() == std::string("Convolution") || (layers_[i]->type() == std::string("InnerProduct")&&sparsity_with_innerprudect)) {
         LayerBase& conv_layer = *layers_[i];
         Blob& conv_weights = *conv_layer.blobs()[0];
 	//
@@ -2237,11 +2242,12 @@ void Net::ApplySparseModeConnectivity(SparseMode mode) {
 }
 //~add by ingenic
 
-void Net::StoreSparseModeConnectivity(SparseMode mode) {
+  void Net::StoreSparseModeConnectivity(SparseMode mode, bool sparsity_with_innerprudect) {
   LOG_IF(INFO, Caffe::root_solver()) << "All zero weights of convolution layers are frozen";
   if(mode != SPARSE_NONE) {
     for(int i=0; i<layers_.size(); i++) {
-      if(layers_[i]->type() == std::string("Convolution")) {
+      //if(layers_[i]->type() == std::string("Convolution")) {
+      if (layers_[i]->type() == std::string("Convolution") || (layers_[i]->type() == std::string("InnerProduct")&&sparsity_with_innerprudect)) {
         LayerBase& conv_layer = *layers_[i];
         Blob& conv_weights = *conv_layer.blobs()[0];
 	LOG(INFO)<<"conv_layer.name():"<<conv_layer.name();
@@ -2311,7 +2317,7 @@ float Net::DisplayConnectivitySparsity(bool verbose) {
   return (total_zero_count/total_count);
 }
 
-int Net::GetSparsity(std::map<std::string, std::pair<int,int> >& sparsity_map){
+  int Net::GetSparsity(std::map<std::string, std::pair<int,int> >& sparsity_map){
   int blob_count = 0;
   float threshold = 0.0f;
   sparsity_map.clear();
@@ -2325,7 +2331,9 @@ int Net::GetSparsity(std::map<std::string, std::pair<int,int> >& sparsity_map){
         next_layer_is_softmax = true;
       }
       bool next_layer_is_not_softmax = (!next_layer_is_softmax);
-      bool is_candidate_layer = (layer_param.type() == "Convolution" /*|| layer_param.type() == "InnerProduct"*/);
+      //bool is_candidate_layer = (layer_param.type() == "Convolution" /*|| layer_param.type() == "InnerProduct"*/);
+      bool sparsity_with_innerprudect= true;
+      bool is_candidate_layer = (layer_param.type() == "Convolution" || (layer_param.type() == "InnerProduct"&&sparsity_with_innerprudect));
 
       if(next_layer_is_not_softmax && is_candidate_layer)  {
           int num_params_to_check = std::min<int>(max_params_to_check, layers_[layer_id]->blobs().size());
@@ -2343,7 +2351,7 @@ int Net::GetSparsity(std::map<std::string, std::pair<int,int> >& sparsity_map){
   return blob_count;
 }
 
-int Net::GetConnectivitySparsity(std::map<std::string, std::pair<int,int> >& sparsity_map){
+  int Net::GetConnectivitySparsity(std::map<std::string, std::pair<int,int> >& sparsity_map){
   int blob_count = 0;
   float threshold = 0.0f;
   sparsity_map.clear();
@@ -2357,7 +2365,9 @@ int Net::GetConnectivitySparsity(std::map<std::string, std::pair<int,int> >& spa
         next_layer_is_softmax = true;
       }
       bool next_layer_is_not_softmax = (!next_layer_is_softmax);
-      bool is_candidate_layer = (layer_param.type() == "Convolution" /*|| layer_param.type() == "InnerProduct"*/);
+      //bool is_candidate_layer = (layer_param.type() == "Convolution" /*|| layer_param.type() == "InnerProduct"*/);
+      bool sparsity_with_innerprudect = true;
+      bool is_candidate_layer = (layer_param.type() == "Convolution" || (layer_param.type() == "InnerProduct"&&sparsity_with_innerprudect));
 
       if(next_layer_is_not_softmax && is_candidate_layer) {
           int num_params_to_check = std::min<int>(max_params_to_check, layers_[layer_id]->blobs().size());

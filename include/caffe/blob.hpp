@@ -551,9 +551,8 @@ class Blob {
 
   template<typename Dtype>
   Dtype* mutable_gpu_connectivity() {
-    LOG(INFO) << "hello here!: mutable_gpu_connectivityA";
+    //LOG(INFO) << "hello here!: mutable_gpu_connectivityA";
     convert_connectivity(tp<Dtype>());
-    LOG(INFO) << "hello here!: mutable_gpu_connectivityB";
     return static_cast<Dtype*>(connectivity_->mutable_synced_mem()->mutable_gpu_data());
   }
   //~add by ingenic
@@ -646,7 +645,7 @@ class Blob {
   }
   //add by ingenic
   bool is_current_connectivity_valid() const {
-    LOG(INFO) << "hello here!connectivity_: " << connectivity_;
+    //LOG(INFO) << "hello here!connectivity_: " << connectivity_;
     return connectivity_->is_current_valid();
   }
   void convert_connectivity(Type new_data_type) const {
@@ -796,9 +795,8 @@ class TBlob : public Blob {
 
   template<typename T = Dtype>
   T* mutable_gpu_connectivity() {
-    LOG(INFO) << "hello here!: mutable_gpu_connectivity";
+    //LOG(INFO) << "hello here!: mutable_gpu_connectivity";
     check_integrity(true, data_type(), tp<T>());
-    LOG(INFO) << "hello here!: mutable_gpu_connectivity";
     return Blob::mutable_gpu_connectivity<T>();
   }
   //~add by ingenic
